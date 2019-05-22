@@ -35,12 +35,14 @@ echo 1 > /proc/sys/net/ipv4/ip_forward
 iptables -t nat -A POSTROUTING -s "${net}/24" -o "${gw_dev}" -j MASQUERADE
 
 # Peek!
-ip netns exec "${netns}" tcpdump -w "${netns}.pcap" -vv -n -i "${veth_out}" &
+ip netns exec "${netns}" \
+   tcpdump -w "${netns}.pcap" -vv -n -i "${veth_out}" \
+   | tee > "${netns}.tcpdump-stdout" &
 echo "giving tcpdump a chance to start capturing..."
+# Yeah yeah I could mkfifo here to wait until tcpdump actually starts capturing
+# but I'm lazy.
 sleep 1
 tcpdump_pid="$!"
 ip netns exec "${netns}" "$@"
-echo "tool exited, giving tcpdump a chance to finish writing..."
-# Yes, I also expect SIGINT to mean "finish writing first". And yet, my tests show different.
-sleep 1
-kill -SIGINT "${tcpdump_pid}" 
+kill -SIGINT "${tcpdump_pid}"
+wait "${tcpdump_pid}"
