@@ -22,21 +22,25 @@ trap cleanup EXIT
 # Set up a network namespace with an egress veth
 ip netns add "${netns}"
 ip link add "${veth_out}" type veth peer name "${veth_in}"
+# Configure veth_out
 ip link set "${veth_out}" netns "${netns}"
-ip netns exec "${netns}" ip link set "${veth_out}" up
-ip netns exec "${netns}" ip link set "${veth_out}" up
 ip netns exec "${netns}" ip addr add "${veth_out_ip}/24" dev "${veth_out}"
+ip netns exec "${netns}" ip link set "${veth_out}" up
+# Configure veth_in
 ip addr add "${veth_in_ip}/24" dev "${veth_in}"
+ip link set "${veth_in}" up
+# Set up routing & forwarding
 ip netns exec "${netns}" ip route add default via "${veth_in_ip}" dev "${veth_out}"
-
-# Set up forwarding
 echo 1 > /proc/sys/net/ipv4/ip_forward
 iptables -t nat -A POSTROUTING -s "${net}/24" -o "${gw_dev}" -j MASQUERADE
 
 # Peek!
-ip netns exec "${netns}" tcpdump -w "${netns}.pcap" &
+ip netns exec "${netns}" tcpdump -w "${netns}.pcap" -vv -n -i "${veth_out}" &
 echo "giving tcpdump a chance to start capturing..."
 sleep 1
 tcpdump_pid="$!"
 ip netns exec "${netns}" "$@"
-kill "${tcpdump_pid}" INT
+echo "tool exited, giving tcpdump a chance to finish writing..."
+# Yes, I also expect SIGINT to mean "finish writing first". And yet, my tests show different.
+sleep 1
+kill -SIGINT "${tcpdump_pid}" 
