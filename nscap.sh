@@ -41,7 +41,7 @@ ip netns exec "${netns}" \
 echo "giving tcpdump a chance to start capturing..."
 # Yeah yeah I could mkfifo here to wait until tcpdump actually starts capturing
 # but I'm lazy.
-sleep 1
+sleep 3
 tcpdump_pid="$!"
 ip netns exec "${netns}" "$@"
 kill -SIGINT "${tcpdump_pid}"
