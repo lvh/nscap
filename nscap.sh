@@ -37,7 +37,7 @@ iptables -t nat -A POSTROUTING -s "${net}/24" -o "${gw_dev}" -j MASQUERADE
 
 # Peek!
 ip netns exec "${netns}" \
-   tcpdump -w "${pcap_file}" -vv -n -i "${veth_out}" &
+   tcpdump -w "${pcap_file}" -vv -nn -i "${veth_out}" &
 echo "giving tcpdump a chance to start capturing..."
 # Yeah yeah I could mkfifo here to wait until tcpdump actually starts capturing
 # but I'm lazy.
